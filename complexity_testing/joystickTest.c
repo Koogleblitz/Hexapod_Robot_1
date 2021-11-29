@@ -6,7 +6,7 @@
  *
  *	I acknowledge all content contained herein, excluding timer.h or example
  *	code, is my own original work.
-	Demo link:	
+	Demo link:	https://www.youtube.com/watch?v=ALOjAv_q6wE 
  */
 #include <avr/io.h>
 #include <avr/interrupt.h>
@@ -179,34 +179,6 @@ unsigned short yAxisADC(void){
 	return(ADC);
 }
 //-------------------------------------------------/ADC------------------------------------------//
-
-////----------------------------------------motorPulseWidthModulator----------------------------------------------////
-void set_PWM(double frequency) {
-    static double current_frequency;
-    if (frequency != current_frequency) {
-        if (!frequency) { TCCR3B &= 0x08; }
-        else { TCCR3B |= 0x03; }
-        
-        if (frequency < 0.954) { OCR3A = 0xFFFF; }
-        else if (frequency > 31250) { OCR3A = 0x0000; }
-        else { OCR3A = (short) (8000000 / (128 * frequency)) - 1; }
-        
-        TCNT3 = 0;
-        current_frequency = frequency;
-    }
-}
-void PWM_on() {
-    TCCR3A = (1 << COM3A0);
-    TCCR3B = (1 << WGM32) | (1 << CS31) | (1 << CS30);
-    set_PWM(0);
-}
-
-void PWM_off() {
-    TCCR3A = 0x00;
-    TCCR3B = 0x00;
-}
-////----------------------------------------/motorPulseWidthModulatorh----------------------------------------------////
-
 /////////////////////////////////////////////////////////////////////\Headers////////////////////////////////////////////////////////////////////////////////////
 
 
@@ -233,11 +205,6 @@ unsigned short collumn2 = 1;
 unsigned char pseBtn = 1;
 unsigned char gameOverFlag = 0;
 unsigned char prev;
-
-//unsigned long motorPulseCnt = 0;
-unsigned char motorPulse = 0;
-unsigned char dir1;
-unsigned char dir2;
 //-----------\other global vars--------------//
 
 
@@ -252,10 +219,10 @@ enum getInput{play, wait, pause};
 
 //-------------------------------------------------------------------State Machines----------------------------------------------------//
 int KeypadTick(int state){	
-
+	keypadIn =  GetKeypadKey();
 	
 	unsigned char C = ~PINC & (128 + 64 + 32);
-	motorPulse = !motorPulse;
+
 	
 
 	switch(state){
@@ -285,39 +252,45 @@ int KeypadTick(int state){
 	switch(state){
 		case play:			
 			if(!pseBtn){
-				
-				/*     /^\     */
+				//if(C == 128){playerCol = 1;}
+				//else if(C == 64){playerCol = 17;}
+
 				if(yAxisADC() > 750){
-					dir1 = 1;
-					dir2 = 1;
-					//dir = 0b00000011;
+						//up
+					playerCol = (playerCol >= 1)? playerCol-16 : 1;
+					//LCD_DisplayString(1, " x>750");
+					PORTD = 1;
 				}
-
-				/*     -->     */
 				else if(xAxisADC() < 350){
-					dir1 = 0;
-					dir2 = 1;
+						//right
+					playerCol = (playerCol <= 31)? playerCol+16 : 1;
+					//LCD_DisplayString(1, " x<350");
 				}
-
-				/*      <--      */
 				else if(xAxisADC() > 750 ){
-					dir1 = 1;
-					dir2 = 0;
+						//left
+					playerCol = (playerCol >= 1)? playerCol-1 : 1;
+					//LCD_DisplayString(1, " y>750");
+				}
+				else if(yAxisADC() < 350){
+						//down
+					playerCol = (playerCol <= 31)? playerCol+1 : 1;
+					//LCD_DisplayString(1, " y<350");
 				}
 				
-				/*      V      */
-				else if(yAxisADC() < 350){
-					dir1 = 2;
-					dir2 = 2;
+
+				collumn = (collumn<15)? collumn +1 : 1;
+				collumn2 = (collumn2<15)? collumn2 +1 : 1;
+
+
+				if(playerCol == 1){
+					if(collumn == 15){
+						gameOverFlag = 1;
+						collumn = 1;
+						collumn2 = 1;
+					}
 				}
 
-				else{
-					dir1 = 0;
-					dir2 = 0;
-				}
 			}
-
-		
 			
 		break;
 
@@ -327,8 +300,6 @@ int KeypadTick(int state){
 		case pause:
 			pseBtn = !pseBtn; 
 			gameOverFlag = 0;
-			dir1 = 0;
-			dir2 = 0;
 		break;
 	}
 	return state;
@@ -339,7 +310,7 @@ int OutputTick(int state){
 	
 	switch(state){
 		case displayOut: 
-			state = displayOut;		
+			state = displayOut2;		
 		break;
 
 		case displayOut2:
@@ -352,11 +323,16 @@ int OutputTick(int state){
 	//-----------------------------------------
 	switch(state){
 		case displayOut:	
-			PORTB = motorPulse + (dir1<<1);
-			
+			//if(pseBtn){LCD_DisplayString(1, "     PAUSE");}
+			if(!gameOverFlag){
+				LCD_DisplayString(16-collumn, "#");
+				LCD_Cursor(playerCol);	
+			}
+			else{LCD_DisplayString(1, " Game_Over");}
 		break;
 
 		case displayOut2:
+			//if(pseBtn){LCD_DisplayString(1, "     PAUSE");}	
 			if(!gameOverFlag){
 				LCD_DisplayString(32-collumn2, "     #");
 				LCD_Cursor(playerCol);	
@@ -364,9 +340,11 @@ int OutputTick(int state){
 			else{LCD_DisplayString(1, " Game_Over");}
 		break;
 			
+	}
 
+	//PORTB = output;
 	
-	}	
+		
 	return state;		
 }
 
@@ -380,13 +358,12 @@ int OutputTick(int state){
 int main(void) {
 		
 		/*Port c is used for keypad input; half of the port should be input, the other half should be output*/
-    DDRA = 0x00;	PORTA = 0xFF;
+    		DDRA = 0x00;	PORTA = 0xFF;
 		DDRB = 0xFF;	PORTB = 0x00;
 		DDRC = 0x00; 	PORTC = 0xFF;
 		DDRD = 0xFF; 	PORTD = 0x00;
  		LCD_init();
 		ADC_init();
-		PWM_on();
 		
 
 		//Declare the task objects
@@ -401,12 +378,12 @@ int main(void) {
 	
 		//set the fields of each task, this could probably be done in a loop idk
 		task0.state = start;
-		task0.period = 50;
+		task0.period = 200;
 		task0.elapsedTime = task0.period;
 		task0.TickFct = &KeypadTick;
 
 		task1.state = start;
-		task1.period = 10; 
+		task1.period = 50; 
 		task1.elapsedTime = task1.period;
 		task1.TickFct = &OutputTick;
 
