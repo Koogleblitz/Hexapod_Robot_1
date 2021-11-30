@@ -236,8 +236,10 @@ unsigned char prev;
 
 //unsigned long motorPulseCnt = 0;
 unsigned char motorPulse = 0;
-unsigned char dir1;
-unsigned char dir2;
+unsigned char dir;
+//unsigned char dir1;
+//unsigned char dir2;
+unsigned char led;
 //-----------\other global vars--------------//
 
 
@@ -286,34 +288,48 @@ int KeypadTick(int state){
 		case play:			
 			if(!pseBtn){
 				
-				/*     /^\     */
-				if(yAxisADC() > 750){
-					dir1 = 1;
-					dir2 = 1;
-					//dir = 0b00000011;
+				/*     left     */
+				if((yAxisADC()>750) ){
+					//dir1 = 1;
+					//dir2 = 1;
+					//dir = 0b00001010;
+					  dir = 0b00000100; //right wheel forwardS
+					//dir = 0b00000010; //right wheel backwarrd
+					
+					led = 1;
 				}
 
-				/*     -->     */
+				/*     down     */
 				else if(xAxisADC() < 350){
-					dir1 = 0;
-					dir2 = 1;
+					//dir1 = 0;SSS
+					//dir2 = 1;
+					//dir = 0b00000010; //right wheel backwrrd
+					//dir = 0b00001010; //righ wheel backward
+					  dir = 0b00010010; //left wheel forward
+					led = 2;
+
 				}
 
-				/*      <--      */
-				else if(xAxisADC() > 750 ){
-					dir1 = 1;
-					dir2 = 0;
+				/*      up      */
+				else if((xAxisADC() > 750)  ){
+					//dir1 = 1;
+					//dir2 = 0;
+					//dir = 0b00001000;
+					led = 4;
 				}
 				
-				/*      V      */
+				/*      right      */
 				else if(yAxisADC() < 350){
-					dir1 = 2;
-					dir2 = 2;
+					//dir1 = 2;
+					//dir2 = 2;
+					//dir = 0b00010100;
+					led = 8;
 				}
 
 				else{
-					dir1 = 0;
-					dir2 = 0;
+					//dir1 = 0;
+					//dir2 = 0;
+					dir = 0;
 				}
 			}
 
@@ -327,8 +343,9 @@ int KeypadTick(int state){
 		case pause:
 			pseBtn = !pseBtn; 
 			gameOverFlag = 0;
-			dir1 = 0;
-			dir2 = 0;
+			//dir1 = 0;
+			//dir2 = 0;
+			dir = 0;
 		break;
 	}
 	return state;
@@ -352,7 +369,8 @@ int OutputTick(int state){
 	//-----------------------------------------
 	switch(state){
 		case displayOut:	
-			PORTB = motorPulse + (dir1<<1);
+			PORTB = dir + motorPulse + (motorPulse << 5);
+			//PORTB = led;
 			
 		break;
 
@@ -380,7 +398,7 @@ int OutputTick(int state){
 int main(void) {
 		
 		/*Port c is used for keypad input; half of the port should be input, the other half should be output*/
-    DDRA = 0x00;	PORTA = 0xFF;
+    		DDRA = 0x00;	PORTA = 0xFF;
 		DDRB = 0xFF;	PORTB = 0x00;
 		DDRC = 0x00; 	PORTC = 0xFF;
 		DDRD = 0xFF; 	PORTD = 0x00;
@@ -401,7 +419,7 @@ int main(void) {
 	
 		//set the fields of each task, this could probably be done in a loop idk
 		task0.state = start;
-		task0.period = 50;
+		task0.period = 30;
 		task0.elapsedTime = task0.period;
 		task0.TickFct = &KeypadTick;
 
@@ -435,4 +453,4 @@ int main(void) {
     }
     return 0;
 }
-
+                                         
