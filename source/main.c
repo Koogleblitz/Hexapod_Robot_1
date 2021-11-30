@@ -1,12 +1,12 @@
 /*	Author: Richard Tobing, rlumb001@ucr.edu
  *  Partner(s) Name: 
  *	Lab Section: 21
- *	Assignment:	Project Demo 1
+ *	Assignment:	Project Demo 2
  *	Exercise Description: [optional - include for your own benefit]
  *
  *	I acknowledge all content contained herein, excluding timer.h or example
  *	code, is my own original work.
-	Demo link:	
+	Demo link:	https://www.youtube.com/watch?v=4e64xFTR6jA
  */
 #include <avr/io.h>
 #include <avr/interrupt.h>
