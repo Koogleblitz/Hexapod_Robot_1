@@ -1,12 +1,12 @@
 /*	Author: Richard Tobing, rlumb001@ucr.edu
  *  Partner(s) Name: 
  *	Lab Section: 21
- *	Assignment:	Project Demo 2
+ *	Assignment:	Project Demo Final
  *	Exercise Description: [optional - include for your own benefit]
  *
  *	I acknowledge all content contained herein, excluding timer.h or example
  *	code, is my own original work.
-	Demo link:	https://www.youtube.com/watch?v=4e64xFTR6jA
+	Demo link:	
  */
 #include <avr/io.h>
 #include <avr/interrupt.h>
@@ -14,11 +14,13 @@
 #include "simAVRHeader.h"
 #include "io.h"
 #include <stdio.h>
-//#include <string>
 #endif
+
+
+
 //////////////////////////////////////////////////////////////////////Headers////////////////////////////////////////////////////////////////////////////////
-// Permission to copy is granted provided that this header remains intact. 
-// This software is provided with no warranties.
+// Permission to copy is granted provided that this header remains intact. 										/////
+// This software is provided with no warranties.													/////
 //
 //--------------------------------------------------------------timer.h----------------------------------------------------------------------------//
 volatile unsigned char TimerFlag = 0; 
@@ -59,7 +61,7 @@ unsigned char SetBit(unsigned char pin, unsigned char number, unsigned char bin_
 	return (bin_value ? pin | (0x01 << number) : pin & ~(0x01 << number));
 }
 
-////////////////////////////////////////////////////////////////////////////////
+//
 //Functionality - Gets bit from a PINx
 //Parameter: Takes in a uChar for a PINx and the pin number
 //Returns: The value of the PINx
@@ -150,7 +152,7 @@ unsigned long int findGCD(unsigned long int a, unsigned long int b){
 		b = c;
 	}
 	return 0;
-}
+} 
 //Struct for Tasks represent a running process in our simple real-time operating system
 typedef struct _task{
 	// Tasks should have members that include: state, period,
@@ -206,7 +208,97 @@ void PWM_off() {
     TCCR3B = 0x00;
 }
 ////----------------------------------------/motorPulseWidthModulatorh----------------------------------------------////
+////----------------------------------------USART----------------------------------------------////
 
+#ifndef USART_H
+#define USART_H
+
+// USART Setup Values
+#define F_CPU 8000000UL // Assume uC operates at 8MHz
+#define BAUD_RATE 9600
+#define BAUD_PRESCALE (((F_CPU / (BAUD_RATE * 16UL))) - 1)
+
+////////////////////////////////////////////////////////////////////////////////
+//Functionality - Initializes TX and RX on PORT D
+//Parameter: None
+//Returns: None
+void initUSART()
+{
+	/*My Note: 
+	these are the non-obvious changes I made to update this old USART library to work with the the Atmega1284p:
+	URSEL changed to 1, UCSZ0 to UCSZ00, UCSZ1 to UCSZ02
+	other changes are simpler, like putting a 0 right before the last letter of the register name*/
+
+	// Turn on the reception circuitry
+	// Use 8-bit character sizes - URSEL bit set to select the UCRSC register
+	// Turn on receiver and transmitter
+	UCSR0B |= (1 << RXEN0)  | (1 << TXEN0);
+	UCSR0C |= (1 << 1) | (1 << UCSZ00) | (1 << UCSZ02);
+	// Load lower 8-bits of the baud rate value into the low byte of the UBRR0L register
+	UBRR0L = BAUD_PRESCALE;
+	// Load upper 8-bits of the baud rate value into the high byte of the UBRR register
+	UBRR0H = (BAUD_PRESCALE >> 8);
+}
+
+//Functionality - checks if USART is ready to send
+//Parameter: None
+//Returns: 1 if true else 0
+unsigned char USART_IsSendReady()
+{
+	return (UCSR0A & (1 << UDRE0));
+}
+
+//Functionality - checks if USART has recieved data
+//Parameter: None
+//Returns: 1 if true else 0
+unsigned char USART_HasTransmitted()
+{
+	return (UCSR0A & (1 << TXC0));
+}
+
+// **** WARNING: THIS FUNCTION BLOCKS MULTI-TASKING; USE WITH CAUTION!!! ****
+//Functionality - checks if USART has recieved data
+//Parameter: None
+//Returns: 1 if true else 0
+unsigned char USART_HasReceived()
+{
+	return (UCSR0A & (1 << RXC0));
+}
+
+//Functionality - Flushes the data register
+//Parameter: None
+//Returns: None
+void USART_Flush()
+{
+	static unsigned char dummy;
+	while ( UCSR0A & (1 << RXC0) ) { dummy = UDR0; }
+}
+
+// **** WARNING: THIS FUNCTION BLOCKS MULTI-TASKING; USE WITH CAUTION!!! ****
+//Functionality - Sends an 8-bit char value
+//Parameter: Takes a single unsigned char value
+//Returns: None
+void USART_Send(unsigned char sendMe)
+{
+	while( !(UCSR0A & (1 << UDRE0)) );
+	UDR0 = sendMe;
+}
+
+// **** WARNING: THIS FUNCTION BLOCKS MULTI-TASKING; USE WITH CAUTION!!! ****
+//Functionality - receives an 8-bit char value
+//Parameter: None
+//Returns: Unsigned char data from the receive buffer
+unsigned char USART_Receive()
+{
+	while ( !(UCSR0A & (1 << RXC0)) ); // Wait for data to be received
+	return UDR0; // Get and return received data from buffer
+}
+
+#endif //USART_H
+////----------------------------------------/USART----------------------------------------------////
+
+////																			     ////	
+////																			     ////	
 /////////////////////////////////////////////////////////////////////\Headers////////////////////////////////////////////////////////////////////////////////////
 
 
@@ -240,6 +332,7 @@ unsigned char dir;
 //unsigned char dir1;
 //unsigned char dir2;
 unsigned char led;
+unsigned long cnt;
 //-----------\other global vars--------------//
 
 
@@ -288,48 +381,34 @@ int KeypadTick(int state){
 		case play:			
 			if(!pseBtn){
 				
-				/*     left     */
+				/*     up     */
 				if((yAxisADC()>750) ){
-					//dir1 = 1;
-					//dir2 = 1;
-					//dir = 0b00001010;
-					  dir = 0b00000100; //right wheel forwardS
-					//dir = 0b00000010; //right wheel backwarrd
-					
-					led = 1;
+					dir = 0b00010100;
+					led = 2;
 				}
 
 				/*     down     */
 				else if(xAxisADC() < 350){
-					//dir1 = 0;SSS
-					//dir2 = 1;
-					//dir = 0b00000010; //right wheel backwrrd
-					//dir = 0b00001010; //righ wheel backward
-					  dir = 0b00010010; //left wheel forward
-					led = 2;
+					dir = 0b00001010;
+					led = 4;
 
 				}
 
-				/*      up      */
-				else if((xAxisADC() > 750)  ){
-					//dir1 = 1;
-					//dir2 = 0;
-					//dir = 0b00001000;
-					led = 4;
+				/*      left      */
+				else if((xAxisADC() > 750) && ((yAxisADC()>750)) ){
+					dir = 0b00010000;
+					led = 8;
 				}
 				
 				/*      right      */
 				else if(yAxisADC() < 350){
-					//dir1 = 2;
-					//dir2 = 2;
-					//dir = 0b00010100;
-					led = 8;
+					dir = 0b00000100;
+					led = 1;
 				}
 
 				else{
-					//dir1 = 0;
-					//dir2 = 0;
 					dir = 0;
+					led = 0;
 				}
 			}
 
@@ -345,6 +424,7 @@ int KeypadTick(int state){
 			gameOverFlag = 0;
 			//dir1 = 0;
 			//dir2 = 0;
+			led = 0;
 			dir = 0;
 		break;
 	}
@@ -370,7 +450,9 @@ int OutputTick(int state){
 	switch(state){
 		case displayOut:	
 			PORTB = dir + motorPulse + (motorPulse << 5);
-			//PORTB = led;
+			
+			PORTD = led;
+	
 			
 		break;
 
@@ -402,7 +484,9 @@ int main(void) {
 		DDRB = 0xFF;	PORTB = 0x00;
 		DDRC = 0x00; 	PORTC = 0xFF;
 		DDRD = 0xFF; 	PORTD = 0x00;
- 		LCD_init();
+ 		
+		//#if 0
+		LCD_init();
 		ADC_init();
 		PWM_on();
 		
@@ -419,12 +503,12 @@ int main(void) {
 	
 		//set the fields of each task, this could probably be done in a loop idk
 		task0.state = start;
-		task0.period = 30;
+		task0.period = 1;
 		task0.elapsedTime = task0.period;
 		task0.TickFct = &KeypadTick;
 
 		task1.state = start;
-		task1.period = 10; 
+		task1.period = 1; 
 		task1.elapsedTime = task1.period;
 		task1.TickFct = &OutputTick;
 
@@ -433,9 +517,12 @@ int main(void) {
 		for(unsigned int i = 1; i < numTasks; i++){
 			GCD = findGCD(GCD,tasks[i]->period);
 		}
+		//#endif
 
 		TimerSet(GCD);
 		TimerOn();
+		
+		//PORTB = 0b00110101;  //forward
 
 
    unsigned short i;
@@ -450,6 +537,8 @@ int main(void) {
 
         while (!TimerFlag);
         TimerFlag = 0;
+
+
     }
     return 0;
 }
