@@ -489,6 +489,7 @@ int main(void) {
 		LCD_init();
 		ADC_init();
 		PWM_on();
+		initUSART();
 		
 
 		//Declare the task objects
