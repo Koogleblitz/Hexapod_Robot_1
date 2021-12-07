@@ -18,7 +18,6 @@
 */
 #include <avr/io.h>
 #include <avr/interrupt.h>
-#include <util/delay.h>
 #ifdef _SIMULATE_
 #include "simAVRHeader.h"
 #include "io.h"
@@ -235,14 +234,14 @@ void initUSART()
 {
 	/*My Note: 
 	these are the non-obvious changes I made to update this old USART library to work with the the Atmega1284p:
-	URSEL is omitted, UCSZ0 to UCSZ00, UCSZ1 to UCSZ01
+	URSEL changed to 1, UCSZ0 to UCSZ00, UCSZ1 to UCSZ02
 	other changes are simpler, like putting a 0 right before the last letter of the register name*/
 
 	// Turn on the reception circuitry
 	// Use 8-bit character sizes - URSEL bit set to select the UCRSC register
 	// Turn on receiver and transmitter
 	UCSR0B |= (1 << RXEN0)  | (1 << TXEN0);
-	UCSR0C |=  (1 << UCSZ00) | (1 << UCSZ01);
+	UCSR0C |= (1 << 1) | (1 << UCSZ00) | (1 << UCSZ02);
 	// Load lower 8-bits of the baud rate value into the low byte of the UBRR0L register
 	UBRR0L = BAUD_PRESCALE;
 	// Load upper 8-bits of the baud rate value into the high byte of the UBRR register
