@@ -14,7 +14,14 @@
 	-Adjust Joystick ADC
 	-Add proper turning and rotation with triggers
 	-Bluetooth/IR + USART
-	-clean up code
+	-collision detection with ultrasonic sensor
+	-self driving mode
+	-clean up code, omitt unused libraries, rename stuff
+	-do laundry
+	-walk the dog
+	-cure cancer
+	-kill voldermort
+	-return sauron's ring to mordor
 */
 #include <avr/io.h>
 #include <avr/interrupt.h>
@@ -233,7 +240,7 @@ void PWM_off() {
 //Returns: None
 void initUSART()
 {
-	/*My Note: 
+	/*Richard's Note: 
 	these are the non-obvious changes I made to update this old USART library to work with the the Atmega1284p:
 	URSEL is omitted, UCSZ0 to UCSZ00, UCSZ1 to UCSZ01
 	other changes are simpler, like putting a 0 right before the last letter of the register name*/
@@ -338,10 +345,9 @@ unsigned char prev;
 //unsigned long motorPulseCnt = 0;
 unsigned char motorPulse = 0;
 unsigned char dir;
-//unsigned char dir1;
-//unsigned char dir2;
 unsigned char led;
-unsigned long cnt;
+unsigned long PWM;
+unsigned char rxBT;
 //-----------\other global vars--------------//
 
 
@@ -391,26 +397,26 @@ int KeypadTick(int state){
 			if(!pseBtn){
 				
 				/*     up     */
-				if((yAxisADC()>750) ){
+				if((USART_Receive() == 'F') ){
 					dir = 0b00010100;
 					led = 2;
 				}
 
 				/*     down     */
-				else if(xAxisADC() < 350){
+				else if(USART_Receive() == 'B'){
 					dir = 0b00001010;
 					led = 4;
 
 				}
 
 				/*      left      */
-				else if((xAxisADC() > 750) && ((yAxisADC()>750)) ){
+				else if(USART_Receive() == 'L'){
 					dir = 0b00010000;
 					led = 8;
 				}
 				
 				/*      right      */
-				else if(yAxisADC() < 350){
+				else if(USART_Receive() == 'R'){
 					dir = 0b00000100;
 					led = 1;
 				}
@@ -421,7 +427,7 @@ int KeypadTick(int state){
 				}
 			}
 
-		
+			USART_Flush();
 			
 		break;
 
@@ -460,7 +466,12 @@ int OutputTick(int state){
 		case displayOut:	
 			PORTB = dir + motorPulse + (motorPulse << 5);
 			
-			PORTD = led;
+			//PORTB = (USART_HasReceived())? USART_Receive() : 0;
+
+			//PORTB = USART_Receive();
+			//if (USART_Receive() == 'F'){PORTB = 0xff; }
+			//else{PORTB = 0; }
+			
 	
 			
 		break;
