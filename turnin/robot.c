@@ -18,28 +18,20 @@
 	[x]Wireless Mode : Movement with Bluetooth + Phone  
 		Bluetooth RC Car App (https://play.google.com/store/apps/details?id=braulio.calle.bluetoothRCcontroller)
 	[x]Adjust periods
-	[x]Report
-
-	[x]Adjust Joystick ADC
-	[x]Safety Submission
-	
-  []Update Robot.c so int only calls the ADC function once per tick
-  []clean up code, omitt unused libraries, rename stuff
-  []Improve State machine
-  []Add Breaks
-	[]Add proper turning and rotation with triggers
-  []add 2nd gear (for speed)
+	[]Report
+	[]Adjust Joystick AD
 	[]Safety Submission
+	[]Second Safety Submission
 
-  []Collision detection with ultrasonic sensor
-  []self driving mode
-	
+	[]collision detection with ultrasonic sensor
+	[]Third Safety Submission
+
+	[]Add Breaks
+	[]Add proper turning and rotation with triggers
+	[]add 2nd gear (for speed
 	[]Bluetooth with another breadboard
-  []Safety Submission
-  
-  []Add Legs
-  []Final Submission
-	
+	[]self driving mode
+	[]clean up code, omitt unused libraries, rename stuff
 	[]do laundry
 	[]walk the dog
 	[]cure cancer
@@ -421,15 +413,12 @@ int KeypadTick(int state){
 			if(!pseBtn){
 				
 				/*     up     */
-
-
 				if((rxBT == 'F') ){
 					dir = 0b00010100;
 					led = 2;
 				}
 
 				/*     down     */
-
 				else if(rxBT == 'B'){
 					dir = 0b00001010;
 					led = 4;
@@ -443,7 +432,6 @@ int KeypadTick(int state){
 				}
 				
 				/*      right      */
-
 				else if(rxBT == 'R'){
 					dir = 0b00010000;
 					led = 1;
