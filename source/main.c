@@ -2,7 +2,7 @@
  *  Partner(s) Name: 
  *	Lab Section: 21
  *	Assignment:	Project Demo Final
- *	Exercise Description: [optional - include for your own benefit]
+ *	Exercise Description: [robot.c : This is the robot's code for receiving the bluetooth USART signal]
  *
  *	I acknowledge all content contained herein, excluding timer.h or example
  *	code, is my own original work.
@@ -10,33 +10,50 @@
  */
 
 
-/*TODO:
+/*TODO List 8pm :
 	[x]Complexity 1: Joystick
 	[x]Complexity 2: DC motors + Motor Drivers
 	[x]Complexity 3: Bluetooth + USART (phone)
 	[x]Wired Mode: Movieement via joystick
 	[x]Wireless Mode : Movement with Bluetooth + Phone  
-		Bluetooth RC Car App (https://play.google.com/store/apps/details?id=braulio.calle.bluetoothRCcontroller)
+		Bluetooth RC Car App (https://drive.google.com/store/apps/details?id=braulio.calle.bluetoothRCcontroller)
 	[x]Adjust periods
-	[]Report
-	[]Adjust Joystick AD
+	[x]Report
+	[x]Adjust Joystick ADC
+	[x]Safety Submission
+
+	[x]Turn in at 5:02pm thinking it was due at 5pm
+	[x]Proceed to having a 25 minute heart attack
+	[x]realize that its not due until midnight, proceed to building an awesome robot
+	
+  	[x]Update Robot.c so int only calls the ADC function once per tick
+  	[x]clean up code, omitt unused libraries, rename stuff
+  	[x]Improve State machine
+	[x]Rewire buttons:  gear2/RTrig: PB7(128), pause/midBtn: PB6(64), brake/LTrig: PB5(32)
+  	[x]Add Breaks
+	[x]Add proper turning 
+  	[x]add 2nd gear (for speed)
+	[x]update Report
+	[x]Safety Submission
+
+  	[]Collision detection with ultrasonic sensor
+  	[]self driving mode
 	[]Safety Submission
-	[]Second Safety Submission
-
-	[]collision detection with ultrasonic sensor
-	[]Third Safety Submission
-
-	[]Add Breaks
-	[]Add proper turning and rotation with triggers
-	[]add 2nd gear (for speed
+	
 	[]Bluetooth with another breadboard
-	[]self driving mode
-	[]clean up code, omitt unused libraries, rename stuff
+  	[]Safety Submission
+  
+  	[]Add Legs
+  	[]Final Submission
+	
 	[]do laundry
 	[]walk the dog
 	[]cure cancer
 	[]kill voldermort
 	[]return sauron's ring to mordor
+
+	[]Add legs. this is what seperates a "robot" from a meer "car"
+	[]Show off to ur friends so they know what a bigbrain engeineer you are
 */
 #include <avr/io.h>
 #include <avr/interrupt.h>
@@ -46,9 +63,6 @@
 #include "io.h"
 #include <stdio.h>
 #endif
-
-
-
 //////////////////////////////////////////////////////////////////////Headers////////////////////////////////////////////////////////////////////////////////
 // Permission to copy is granted provided that this header remains intact. 										/////
 // This software is provided with no warranties.													/////
@@ -84,96 +98,16 @@ void TimerSet(unsigned long M) {
 //----------------------------------------------------------------bit.h---------------------------------------------------------------------//
 //#ifndef BIT_H
 //#define BIT_H
-//Functionality - Sets bit on a PORTx
-//Parameter: Takes in a uChar for a PORTx, the pin number and the binary value 
-//Returns: The new value of the PORTx
 unsigned char SetBit(unsigned char pin, unsigned char number, unsigned char bin_value) 
-{
-	return (bin_value ? pin | (0x01 << number) : pin & ~(0x01 << number));
-}
-
-//
-//Functionality - Gets bit from a PINx
-//Parameter: Takes in a uChar for a PINx and the pin number
-//Returns: The value of the PINx
+{return (bin_value ? pin | (0x01 << number) : pin & ~(0x01 << number));}
 unsigned char GetBit(unsigned char port, unsigned char number) 
-{
-	return ( port & (0x01 << number) );
-}
+{return ( port & (0x01 << number) );}
 //------------------------------------------------------------------/bit.h---------------------------------------------------------------------//
-
-
-//----------------------------------------------------------------keypad.h---------------------------------------------------------------------//
-// Returns '\0' if no key pressed, else returns char '1', '2', ... '9', 'A', ...
-// If multiple keys pressed, returns leftmost-topmost one
-// Keypad must be connected to port C
-// Keypad arrangement
-//        Px4 Px5 Px6 Px7
-//	  col 1   2   3   4
-//  row  ______________
-//Px0 1	| 1 | 2 | 3 | A
-//Px1 2	| 4 | 5 | 6 | B
-//Px2 3	| 7 | 8 | 9 | C
-//Px3 4	| * | 0 | # | D
-//#ifndef KEYPAD_H
-//#define KEYPAD_H
-//#include <bit.h>
-
-// Keypad Setup Values
-#define KEYPADPORT PORTC
-#define KEYPADPIN  PINC
-#define ROW1 0
-#define ROW2 1
-#define ROW3 2
-#define ROW4 3
-#define COL1 4
-#define COL2 5
-#define COL3 6
-#define COL4 7
-
-//Functionality - Gets input from a keypad via time-multiplexing
-//Parameter: None
-//Returns: A keypad button press else '\0'
-unsigned char GetKeypadKey() {
-	// Check keys in col 1
-	KEYPADPORT = SetBit(0xFF,COL1,0); // Set Px4 to 0; others 1
-	asm("nop"); // add a delay to allow PORTx to stabilize before checking
-	if ( GetBit(~KEYPADPIN,ROW1) ) { return '1'; }
-	if ( GetBit(~KEYPADPIN,ROW2) ) { return '4'; }
-	if ( GetBit(~KEYPADPIN,ROW3) ) { return '7'; }
-	if ( GetBit(~KEYPADPIN,ROW4) ) { return '*'; }
-	// Check keys in col 2
-	KEYPADPORT = SetBit(0xFF,COL2,0); // Set Px5 to 0; others 1
-	asm("nop"); // add a delay to allow PORTx to stabilize before checking
-	if ( GetBit(~KEYPADPIN,ROW1) ) { return '2'; }
-	if ( GetBit(~KEYPADPIN,ROW2) ) { return '5'; }
-	if ( GetBit(~KEYPADPIN,ROW3) ) { return '8'; }
-	if ( GetBit(~KEYPADPIN,ROW4) ) { return '0'; }
-	// Check keys in col 3
-	KEYPADPORT = SetBit(0xFF,COL3,0); // Set Px6 to 0; others 1
-	asm("nop"); // add a delay to allow PORTx to stabilize before checking
-	if ( GetBit(~KEYPADPIN,ROW1) ) { return '3'; }
-	if ( GetBit(~KEYPADPIN,ROW2) ) { return '6'; }
-	if ( GetBit(~KEYPADPIN,ROW3) ) { return '9'; }
-	if ( GetBit(~KEYPADPIN,ROW4) ) { return '#'; }
-	// Check keys in col 4
-	KEYPADPORT = SetBit(0xFF,COL4,0); // Set Px7 to 0; others 1
-	asm("nop"); // add a delay to allow PORTx to stabilize before checking
-	if (GetBit(~KEYPADPIN,ROW1) ) { return 'A'; }
-	if (GetBit(~KEYPADPIN,ROW2) ) { return 'B'; }
-	if (GetBit(~KEYPADPIN,ROW3) ) { return 'C'; }
-	if (GetBit(~KEYPADPIN,ROW4) ) { return 'D'; }
-	return '\0';
-}
-//----------------------------------------------------------------------/keypad.h------------------------------------------------------------------------//
 
 
 //----------------------------------------------------------------------scheduler.h---------------------------------------------------------------------//
 //#ifndef SCHEDULER_H
 //#define SCHEDULER_H
-//Functionality - finds the greatest common divisor of two values
-//Parameter: Two long int's to find their GCD
-//Returns: GCD else 0
 unsigned long int findGCD(unsigned long int a, unsigned long int b){
 	unsigned long int c;
 	while(1){
@@ -213,7 +147,7 @@ unsigned short yAxisADC(void){
 }
 //-------------------------------------------------/ADC------------------------------------------//
 
-////----------------------------------------motorPulseWidthModulator----------------------------------------------////
+////----------------------------------------PulseWidthModulator----------------------------------------------////
 void set_PWM(double frequency) {
     static double current_frequency;
     if (frequency != current_frequency) {
@@ -233,22 +167,19 @@ void PWM_on() {
     TCCR3B = (1 << WGM32) | (1 << CS31) | (1 << CS30);
     set_PWM(0);
 }
-
 void PWM_off() {
     TCCR3A = 0x00;
     TCCR3B = 0x00;
 }
-////----------------------------------------/motorPulseWidthModulatorh----------------------------------------------////
-////----------------------------------------USART----------------------------------------------////
+////----------------------------------------/PulseWidthModulatorh----------------------------------------------////
 
+////----------------------------------------USART----------------------------------------------////
 #ifndef USART_H
 #define USART_H
-
 // USART Setup Values
 #define F_CPU 8000000UL // Assume uC operates at 8MHz
 #define BAUD_RATE 9600
 #define BAUD_PRESCALE (((F_CPU / (BAUD_RATE * 16UL))) - 1)
-
 ////////////////////////////////////////////////////////////////////////////////
 //Functionality - Initializes TX and RX on PORT D
 //Parameter: None
@@ -327,7 +258,6 @@ unsigned char USART_Receive()
 
 #endif //USART_H
 ////----------------------------------------/USART----------------------------------------------////
-
 ////																			     ////	
 ////																			     ////	
 /////////////////////////////////////////////////////////////////////\Headers////////////////////////////////////////////////////////////////////////////////////
@@ -336,123 +266,84 @@ unsigned char USART_Receive()
 
 
 
-
-
-
-
-
-
-//-----------------shared vars---------------//
-unsigned char keyOut = 7;
-unsigned char keypadIn;
-unsigned short playerCol;
-//---------------\shared vars----------------//
-
-
-
-//-------------other global vars-------------//
-unsigned short collumn = 1;
-unsigned short collumn2 = 1;
+//-----------------Global Vars---------------//
 unsigned char pseBtn = 1;
-unsigned char gameOverFlag = 0;
 unsigned char prev;
-
-//unsigned long motorPulseCnt = 0;
 unsigned char motorPulse = 0;
 unsigned char dir;
 unsigned char led;
-unsigned long PWM;
-
-//-----------\other global vars--------------//
+unsigned long PWM = 0;
+//-----------\Global Vars--------------//
 
 
 
 //---------------------------------------States----------------------------------------------//
-enum displayStates{displayOut, displayOut2, gameOver};
-enum getInput{play, wait, pause};
+enum outputStates{sendOutput, wait};
+enum getInput{drive, standby, pause};
 //---------------------------------------\States----------------------------------------------//
 
 
 
 
 //-------------------------------------------------------------------State Machines----------------------------------------------------//
-int KeypadTick(int state){	
-
-	
-	unsigned char C = ~PINC & (128 + 64 + 32);
+int rxTick(int state){	
+	unsigned char C = ~PINC & (32 + 64 + 128);
 	motorPulse = !motorPulse;
 	unsigned char rxBT = USART_Receive();
 	
-
 	switch(state){
-		case wait:
-			if(C == 32){state = wait;	prev = 0;}
-			else{state = play;	}	
-			
+		case standby:
+			if(C == 64){state = standby;	prev = 0;}
+			else{state = drive;	}	
 		break;
-
-		case play: 
-			if(C == 32){ state = pause;	prev = 1;}
-			else{state = play;   }
-			//state = play;	
-
+		case drive: 
+			if(C == 64){ state = pause;	prev = 1;}
+			else{state = drive;   }
 		break;
-
 		case pause:
-			state = (prev)? wait : play;
-			//state = wait;
+			state = (prev)? standby : drive;
 		break;
-
-		default: state = play;	
+		default: state = drive;	
 		break;
-	
 	}
 	//-----------------------------------------
 	switch(state){
-		case play:			
+		case drive:			
 			if(!pseBtn){
-				
-				/*     up     */
+				/*     up/forward     */
 				if((rxBT == 'F') ){
 					dir = 0b00010100;
 					led = 2;
 				}
-
-				/*     down     */
+				/*     down/back     */
 				else if(rxBT == 'B'){
 					dir = 0b00001010;
 					led = 4;
-
 				}
-
 				/*      left      */
 				else if(rxBT == 'L'){
-					dir = 0b00000100;
+					dir = 0b00000100;                               //Rotate
+					//dir = (PWM%3)? 0b00000100 : 0b00010000;	//Turn
 					led = 8;
 				}
-				
 				/*      right      */
 				else if(rxBT == 'R'){
-					dir = 0b00010000;
+					dir = 0b00010000;				//Rotate
+					//dir = (PWM%3)? 0b00010000 : 0b00000100;	//Turn
 					led = 1;
 				}
-
+				/*      standby      */
 				else{
 					dir = 0;
 					led = 0;
 				}
 			}
-
 			USART_Flush();
-			
 		break;
-
-		case wait: 
+		case standby: 
 		break;
-
 		case pause:
 			pseBtn = !pseBtn; 
-			gameOverFlag = 0;
 			led = 0;
 			dir = 0;
 		break;
@@ -462,32 +353,30 @@ int KeypadTick(int state){
 
 
 int OutputTick(int state){
+	unsigned char brake = ~PINC & (32);   
+	unsigned char gear2 = ~PINC & (128);  
+	PWM = (PWM <= 1000)? (PWM+1) : 0; 
 	
 	switch(state){
-		case displayOut: 
-			state = displayOut;		
+		case sendOutput: 
+			state = (brake)? wait : sendOutput;		
 		break;
-
-		case displayOut2:
-			state = displayOut;		
+		case wait:
+			state = (brake)? wait : sendOutput;		
 		break;
-		
-		default: state = displayOut;	
+		default: state = sendOutput;	
 		break;
 	}
 	//-----------------------------------------
 	switch(state){
-		case displayOut:	
-			PORTB = dir + motorPulse + (motorPulse << 5);
-			
+		case sendOutput:	
+			//PORTB = dir + motorPulse + (motorPulse << 5);
+			if(gear2){PORTB = dir + motorPulse + (motorPulse << 5);	}
+			else{PORTB = (PWM%2)? 0 : dir + motorPulse + (motorPulse << 5);}
 		break;
-
-		case displayOut2:
-			
+		case wait:
+			PORTB = 0;
 		break;
-			
-
-	
 	}	
 	return state;		
 }
@@ -497,11 +386,7 @@ int OutputTick(int state){
 
 
 
-
-
 int main(void) {
-		
-		/*Port c is used for keypad input; half of the port should be input, the other half should be output*/
     		DDRA = 0x00;	PORTA = 0xFF;
 		DDRB = 0xFF;	PORTB = 0x00;
 		DDRC = 0x00; 	PORTC = 0xFF;
@@ -528,7 +413,7 @@ int main(void) {
 		task0.state = start;
 		task0.period = 20;
 		task0.elapsedTime = task0.period;
-		task0.TickFct = &KeypadTick;
+		task0.TickFct = &rxTick;
 
 		task1.state = start;
 		task1.period = 10; 
@@ -547,7 +432,6 @@ int main(void) {
 		
 		//PORTB = 0b00110101;  //forward
 
-
    unsigned short i;
     while (1) {
         for (i = 0; i < numTasks; i++) {
@@ -557,11 +441,8 @@ int main(void) {
             }
             tasks[i]->elapsedTime += GCD;
         }
-
         while (!TimerFlag);
         TimerFlag = 0;
-
-
     }
     return 0;
 }
