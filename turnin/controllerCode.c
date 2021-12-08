@@ -18,28 +18,20 @@
 	[x]Wireless Mode : Movement with Bluetooth + Phone  
 		Bluetooth RC Car App (https://play.google.com/store/apps/details?id=braulio.calle.bluetoothRCcontroller)
 	[x]Adjust periods
-	[x]Report
-
-	[x]Adjust Joystick ADC
-	[x]Safety Submission
-	
-  []Update Robot.c so int only calls the ADC function once per tick
-  []clean up code, omitt unused libraries, rename stuff
-  []Improve State machine
-  []Add Breaks
-	[]Add proper turning and rotation with triggers
-  []add 2nd gear (for speed)
+	[]Report
+	[]Adjust Joystick ADC
 	[]Safety Submission
+	
 
-  []Collision detection with ultrasonic sensor
-  []self driving mode
-	
+
+	[]collision detection with ultrasonic sensor
+	[]Third Safety Submission
+	[]Add Breaks
+	[]Add proper turning and rotation with triggers
+	[]add 2nd gear (for speed
 	[]Bluetooth with another breadboard
-  []Safety Submission
-  
-  []Add Legs
-  []Final Submission
-	
+	[]self driving mode
+	[]clean up code, omitt unused libraries, rename stuff
 	[]do laundry
 	[]walk the dog
 	[]cure cancer
@@ -263,7 +255,7 @@ void PWM_off() {
 //Returns: None
 void initUSART()
 {
-	/*Richard's Note: 
+	/*My Note: 
 	these are the non-obvious changes I made to update this old USART library to work with the the Atmega1284p:
 	URSEL is omitted, UCSZ0 to UCSZ00, UCSZ1 to UCSZ01
 	other changes are simpler, like putting a 0 right before the last letter of the register name*/
@@ -368,9 +360,10 @@ unsigned char prev;
 //unsigned long motorPulseCnt = 0;
 unsigned char motorPulse = 0;
 unsigned char dir;
+//unsigned char dir1;
+//unsigned char dir2;
 unsigned char led;
-unsigned long PWM;
-
+unsigned long cnt;
 //-----------\other global vars--------------//
 
 
@@ -389,7 +382,6 @@ int KeypadTick(int state){
 	
 	unsigned char C = ~PINC & (128 + 64 + 32);
 	motorPulse = !motorPulse;
-	unsigned char rxBT = USART_Receive();
 	
 
 	switch(state){
@@ -421,31 +413,27 @@ int KeypadTick(int state){
 			if(!pseBtn){
 				
 				/*     up     */
-
-
-				if((rxBT == 'F') ){
+				if((yAxisADC()>700) ){
 					dir = 0b00010100;
 					led = 2;
 				}
 
 				/*     down     */
-
-				else if(rxBT == 'B'){
+				else if(xAxisADC() < 300){
 					dir = 0b00001010;
 					led = 4;
 
 				}
 
 				/*      left      */
-				else if(rxBT == 'L'){
-					dir = 0b00000100;
+				else if((xAxisADC() > 750) && ((yAxisADC()>750)) ){
+					dir = 0b00010000;
 					led = 8;
 				}
 				
 				/*      right      */
-
-				else if(rxBT == 'R'){
-					dir = 0b00010000;
+				else if(yAxisADC() < 300){
+					dir = 0b00000100;
 					led = 1;
 				}
 
@@ -455,7 +443,7 @@ int KeypadTick(int state){
 				}
 			}
 
-			USART_Flush();
+		
 			
 		break;
 
@@ -492,10 +480,17 @@ int OutputTick(int state){
 		case displayOut:	
 			PORTB = dir + motorPulse + (motorPulse << 5);
 			
+			PORTD = led;
+	
+			
 		break;
 
 		case displayOut2:
-			
+			if(!gameOverFlag){
+				LCD_DisplayString(32-collumn2, "     #");
+				LCD_Cursor(playerCol);	
+			}
+			else{LCD_DisplayString(1, " Game_Over");}
 		break;
 			
 
@@ -538,12 +533,12 @@ int main(void) {
 	
 		//set the fields of each task, this could probably be done in a loop idk
 		task0.state = start;
-		task0.period = 20;
+		task0.period = 1;
 		task0.elapsedTime = task0.period;
 		task0.TickFct = &KeypadTick;
 
 		task1.state = start;
-		task1.period = 10; 
+		task1.period = 1; 
 		task1.elapsedTime = task1.period;
 		task1.TickFct = &OutputTick;
 
